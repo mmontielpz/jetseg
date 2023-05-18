@@ -1,0 +1,10 @@
+# Run with terminal mode (always run on alphanet directory)
+docker run --net=host --ipc=host --gpus all -it --shm-size 8G -v $(pwd):/workspace/alphanet -w /workspace/alphanet mmontielpz/dl:latest
+
+# Using Display for GUI (showing with matplotlib, opencv, etc)
+docker run --net=host --gpus all -it -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix --shm-size 8G -v $(pwd):/workspace/alphanet -w /workspace/alphanet mmontielpz/dl:latest
+# Note: you need to run first the next command
+xhost +
+
+# Run jupyter notebook
+jupyter notebook --allow-root --ip 0.0.0.0 --port 8888 --config=$(pwd)/jupyter_notebook_config.json

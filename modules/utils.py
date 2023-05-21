@@ -710,6 +710,23 @@ def mask_to_rgb(mask, color_dict):
     return rgb
 
 
+def onehot_to_rgb(onehot, color_map):
+
+    single_layer = np.argmax(onehot.cpu(), axis=-1)
+    print(f'[DEBUG] Single Layer: {single_layer}')
+
+    output = np.zeros(onehot.shape[:2]+(3,))
+
+    for k in color_map.keys():
+        print(f'[DEBUG] Color Map: {k}')
+        output[single_layer == k] = color_map[k]
+        print(f'[DEBUG] Output of model: {output[single_layer == k]}')
+        sys.exit()
+
+    return np.uint8(output)
+
+
+
 def val_residual_op(in_ch, out_ch, res):
     if not res:
         return 0

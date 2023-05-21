@@ -74,7 +74,6 @@ def train(train_cfg, logger):
         str(jetseg_comb) + "-" + dataset_name.lower()
 
     params["debug"] = True
-    params["color_dict"] = dataset["train"].color_dict
     params["model_name"] = model_name
     params["num_epochs"] = num_epochs
     params["early_stop"] = False

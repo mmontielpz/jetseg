@@ -1,7 +1,7 @@
 import pathmagic
 
+import os
 import sys
-
 import torch
 import torch.nn as nn
 import numpy as np
@@ -19,7 +19,7 @@ from modules.loss import JetLoss
 from modules.metrics import compute_mIoU
 from modules.utils import (
     get_path, color_map, mask_to_rgb, batch_binary_mask, binary_mask,
-    get_results
+    get_results, onehot_to_rgb
 )
 
 assert pathmagic
@@ -67,30 +67,17 @@ def load_dataset(dataset_name, num_classes):
 
     elif dataset_name.lower() == 'camvid':
 
-        # Getting color map codification
-        color_dict = data_path + 'class_dict.csv'
-        code2id, id2code, name2id, id2name = color_map(color_dict)
-        color_maps = {
-            "code2id": code2id,
-            "id2code": id2code,
-            "name2id": name2id,
-            "id2name": id2name,
-        }
-
         train = SSegmDataset(dataset_name=dataset_name.lower(),
                              num_classes=num_classes,
-                             root_path=data_path, mode="train",
-                             color_map=color_maps)
+                             root_path=data_path, mode="train")
 
         test = SSegmDataset(dataset_name=dataset_name.lower(),
                             root_path=data_path, mode="test",
-                            num_classes=num_classes,
-                            color_map=color_maps)
+                            num_classes=num_classes)
 
         valid = SSegmDataset(dataset_name=dataset_name.lower(),
                              root_path=data_path, mode="val",
-                             num_classes=num_classes,
-                             color_map=color_maps)
+                             num_classes=num_classes)
 
         dataset = {}
         dataset["train"] = train
@@ -218,9 +205,11 @@ def one_epoch(params, mode):
 
         # Calculate epoch loss
         epoch_loss = batch_loss / len(dataloader.dataset)
+        epoch_loss = round(epoch_loss, 4)
 
         # Calculate mean of IoU
         miou = miou / len(dataloader)
+        miou = round(miou, 1)
 
         return model, epoch_loss, miou
 
@@ -269,9 +258,11 @@ def one_epoch(params, mode):
 
         # Calculate epoch loss
         epoch_loss = batch_loss / len(dataloader.dataset)
+        epoch_loss = round(epoch_loss, 4)
 
         # Calculate mean of IoU
         miou = miou / len(dataloader)
+        miou = round(miou, 1)
 
         return epoch_loss, miou
 
@@ -279,6 +270,7 @@ def one_epoch(params, mode):
 def training(params):
 
     # Getting dataset name
+    model_path = params["model_path"]
     model_name = params["model_name"]
 
     cols = ['epoch', 'epoch time', 'train loss', 'valid loss']
@@ -287,7 +279,14 @@ def training(params):
 
     # Create csv file
     csv_name = model_name + "-global-losses.csv"
-    csv_file = params["model_path"] + csv_name
+    csv_file = model_path + csv_name
+
+    # Check if the directory exists
+    if not os.path.exists(model_path):
+
+        # Create the directory
+        os.makedirs(model_path)
+        print(f"Directory '{model_path}' created successfully.")
 
     # Write csv file
     df.to_csv(csv_file, index=False)
@@ -356,16 +355,7 @@ def training(params):
         df.to_csv(csv_file, mode='a', header=False, index=False)
 
         train_loss = round(train_loss, 4)
-
-        # Range of mIoU (0-100%)
-        train_miou = train_miou * 100
-        train_miou = round(train_miou, 1)
-
         val_loss = round(val_loss, 4)
-
-        # Range of mIoU (0-100%)
-        val_miou = val_miou * 100
-        val_miou = round(val_miou, 1)
 
         print(f'|Epoch {epoch} | Val loss {val_loss} | Val mIoU {val_miou}')
         print(f'|Epoch {epoch} | Train loss {train_loss} | Train mIoU {train_miou}')
@@ -391,18 +381,7 @@ def testing(params, val=False):
 
     # Getting epoch metrics
     loss, miou = one_epoch(params, False)
-
-    if torch.is_tensor(loss):
-        loss = torch.max(loss)
-    else:
-        loss = round(loss, 4)
-
-    if torch.is_tensor(miou):
-        miou *= 100
-        miou = torch.max(miou)
-    else:
-        miou *= 100
-        miou = round(miou, 1)
+    loss = round(loss, 4)
 
     if val:
         print(f'| Val Loss {loss}, mIoU {miou}\n')
@@ -511,6 +490,12 @@ def evaluation(dataloader, model, color_code):
 
         # Model Logits output
         logits = model(img)
+        print(f'[DEBUG] Model Logits Output: {logits}')
+
+        # Get RGB mask model output
+        output = onehot_to_rgb(logits, color_code)
+        print(f'[DEBUG] Model Output: {output}')
+        sys.exit()
 
         # Convert predictions to class labels
         pred = logits.argmax(dim=1).unsqueeze(1).expand(-1, logits.shape[1], -1, -1).reshape(logits.shape)

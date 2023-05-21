@@ -133,15 +133,16 @@ class Transforms:
 
 
 class SSegmDataset(Dataset):
-    def __init__(self, dataset_name, num_classes, root_path,
-                 mode, color_map, img_size=None):
+    def __init__(self, dataset_name, num_classes,
+                 root_path, mode, img_size=None):
 
         # Getting dataset info
         self.dataset_name = dataset_name
         self.num_classes = num_classes
         self.pixels_per_class = [[] for _ in range(self.num_classes)]
 
-        self.color_dict = CLASS_MAP
+        self.id2code = CLASS_MAP
+        self.code2id = {v: k for k, v in CLASS_MAP.items()}
 
         self.img_path = root_path + mode
         self.mask_path = root_path + mode + "_labels/"
@@ -284,7 +285,7 @@ class SSegmDataset(Dataset):
 
         # Convert rgb to mask
         out_mask, _ = rgb_to_mask(np.array(rgb_mask, dtype=np.uint8),
-                                  self.color_dict)
+                                  self.id2code)
 
         # Convert masks to torch tensor
         rgb_mask = np.array(rgb_mask).transpose(2, 0, 1)

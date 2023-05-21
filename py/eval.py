@@ -65,7 +65,7 @@ def eval_inference(eval_cfg, logger):
     test_dataset = datasets["test"]
 
     # Getting the dataset color code
-    color_code = test_dataset.color_dict
+    color_code = test_dataset.id2code
 
     # Loading dataloaders
     dataloaders = load_dataloaders(datasets, batch_size=1)

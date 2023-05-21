@@ -18,7 +18,7 @@ from modules.dataset import SSegmDataset
 from modules.loss import JetLoss
 from modules.metrics import compute_mIoU
 from modules.utils import (
-    get_path, color_map, mask_to_rgb, batch_binary_mask, binary_mask,
+    get_path, color_map, batch_binary_mask, binary_mask,
     get_results, onehot_to_rgb
 )
 
@@ -391,59 +391,16 @@ def testing(params, val=False):
     return loss, miou
 
 
-def semantic_inference(output, color_code):
+def semantic_inference(logits, color_code):
     print('[DEBUG] Semantic Inference (function)')
-    print(output.shape)
+
+    # Applying one hot to rgb
+    model_output = onehot_to_rgb(logits.cpu(), color_code)
+    print(f'[DEBUG] Model Output (shape): {model_output.shape}')
+    print(f'[DEBUG] Model Output (values): {model_output}')
     sys.exit()
 
-    # Removing batch size
-    output = output.squeeze()
 
-    # Sending results to CPU
-    output = output.detach().cpu().numpy()
-
-    # Applying transpose
-    output = output.transpose((2, 1, 0))
-
-    # Applying mask to rgb
-    output = mask_to_rgb(output, color_code)
-
-    # Applying transpose
-    output = output.transpose((2, 1, 0))
-
-    # # Convert to numpy array and denormalize
-    # output = output * 255.0
-    # output = output.transpose(1, 2, 0)
-
-    # # Convert back to tensor and change data type
-    # output = torch.from_numpy(output)
-    # output = output.permute(2, 0, 1)
-    # output = output.to(torch.uint8)
-
-    return output
-
-
-def inference_evaluation(img, color_code, model, device):
-
-    # Adding dummy batch 1 size
-    img = img.unsqueeze(dim=0)
-
-    # Send to device
-    img = img.to(device)
-
-    # Casting
-    img = img.float()
-
-    # Send model to device
-    model = model.to(device)
-
-    # Inference
-    out = model(img)
-
-    # Getting semantic inference of the model
-    out = semantic_inference(out, color_code)
-
-    return out
 
 
 def evaluation(dataloader, model, color_code):
@@ -490,25 +447,27 @@ def evaluation(dataloader, model, color_code):
 
         # Model Logits output
         logits = model(img)
-        print(f'[DEBUG] Model Logits Output: {logits}')
+
+        # Get semantic inference (mask and miou)
+        pred_mask, miou = semantic_inference(logits, color_code)
 
         # Get RGB mask model output
-        output = onehot_to_rgb(logits, color_code)
-        print(f'[DEBUG] Model Output: {output}')
-        sys.exit()
+        # output = onehot_to_rgb(logits, color_code)
+        # print(f'[DEBUG] Model Output: {output}')
+        # sys.exit()
 
-        # Convert predictions to class labels
-        pred = logits.argmax(dim=1).unsqueeze(1).expand(-1, logits.shape[1], -1, -1).reshape(logits.shape)
+        # # Convert predictions to class labels
+        # pred = logits.argmax(dim=1).unsqueeze(1).expand(-1, logits.shape[1], -1, -1).reshape(logits.shape)
 
-        # Get binary mask prediction of the model
-        pred_mask = batch_binary_mask(img.cpu().numpy(),
-                                      pred.cpu().numpy(), 32)
+        # # Get binary mask prediction of the model
+        # pred_mask = batch_binary_mask(img.cpu().numpy(),
+        #                               pred.cpu().numpy(), 32)
 
-        # Compute mIoU
-        miou = compute_mIoU(pred_mask.cuda(), gt.cuda(), 32)
+        # # Compute mIoU
+        # miou = compute_mIoU(pred_mask.cuda(), gt.cuda(), 32)
 
-        # Convert classes output to rgb output
-        pred_mask = mask_to_rgb(pred_mask.numpy().squeeze(), color_code)
+        # # Convert classes output to rgb output
+        # pred_mask = mask_to_rgb(pred_mask.numpy().squeeze(), color_code)
 
         # Save mIoU
         results.extend([miou])

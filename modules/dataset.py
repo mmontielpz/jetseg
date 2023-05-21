@@ -11,7 +11,6 @@ import torch
 from torchvision import transforms as T
 from torch.utils.data import Dataset
 
-
 from modules.utils import rgb_to_mask
 
 
@@ -284,8 +283,7 @@ class SSegmDataset(Dataset):
         img, rgb_mask = transformer.apply_transform()
 
         # Convert rgb to mask
-        out_mask, _ = rgb_to_mask(np.array(rgb_mask, dtype=np.uint8),
-                                  self.id2code)
+        out_mask = rgb_to_mask(rgb_mask, self.id2code)
 
         # Convert masks to torch tensor
         rgb_mask = np.array(rgb_mask).transpose(2, 0, 1)

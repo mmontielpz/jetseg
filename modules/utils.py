@@ -677,45 +677,27 @@ def batch_binary_mask(rgb, label_mask, num_classes):
     return torch.from_numpy(out_mask)
 
 
-def rgb_to_mask(rgb, color_dict):
+def rgb_to_mask(img, color_map):
+    img = np.array(img, dtype=np.uint8)
+    num_classes = len(color_map)
+    shape = img.shape[:2]+(num_classes,)
+    out = np.zeros(shape, dtype=np.float64)
 
-    # Get the number of classes
-    num_classes = len(color_dict.keys())
+    for i, cls in enumerate(color_map):
+        out[:, :, i] = np.all(np.array(img).reshape((-1, 3)) == color_map[i], axis=1).reshape(shape[:2])
 
-    # rgb shape: (h,w,3); arr shape: (h,w)
-    mask = np.zeros(rgb.shape[:2], dtype=np.uint8)
-
-    # Get the label mask
-    label_mask = label_colors(rgb, mask, color_dict, num_classes)
-
-    # Get binary mask
-    out_mask = binary_mask(rgb, label_mask, num_classes)
-
-    return out_mask, label_mask
-
-
-def mask_to_rgb(mask, color_dict):
-    num_classes, height, width = mask.shape
-
-    # Create an empty RGB image
-    rgb = np.zeros((height, width, 3), dtype=np.uint8)
-
-    # Set the color for each class label
-    for label, color in color_dict.items():
-        if label < num_classes:
-
-            # Set the pixels with the current label to the corresponding color
-            rgb[mask[label] == 1] = color
-
-    return rgb
+    return out.transpose(2, 0, 1)
 
 
 def onehot_to_rgb(onehot, color_map):
+    print(f'[DEBUG] Original OnHot: {onehot.shape}')
+    print(f'[DEBUG] Color map: {color_map}')
 
-    single_layer = np.argmax(onehot.cpu(), axis=-1)
-    print(f'[DEBUG] Single Layer: {single_layer}')
-
-    output = np.zeros(onehot.shape[:2]+(3,))
+    single_layer = np.argmax(onehot, axis=1)
+    print(f'[DEBUG] Single Layer Output: {single_layer.shape}')
+    output = np.zeros(onehot.shape[-2:]+(3,))
+    output = output.transpose(2, 0, 1)
+    print(f'[DEBUG] Output: {output.shape}')
 
     for k in color_map.keys():
         print(f'[DEBUG] Color Map: {k}')

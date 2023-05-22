@@ -73,6 +73,10 @@ def train(train_cfg, logger):
     model_name = "JetSeg-M" + str(jetseg_mode) + "-C" + \
         str(jetseg_comb) + "-" + dataset_name.lower()
 
+    # Getting the dataset color codes
+    color_code = {"id2code": dataset["train"].id2code,
+                  "code2id": dataset["train"].code2id}
+
     params["debug"] = True
     params["model_name"] = model_name
     params["num_epochs"] = num_epochs
@@ -85,6 +89,7 @@ def train(train_cfg, logger):
     params["optimizer"] = optimizer
     params["scheduler"] = None
     params["num_classes"] = cfg.num_classes
+    params["color_code"] = color_code
 
     logger.info('Training set up')
 

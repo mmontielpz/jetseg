@@ -201,17 +201,32 @@ def show_segmentation(samples, fig_name=None, debug=False):
         miou = samples[i][2]
         pred = samples[i][3]
 
-        if not isinstance(pred, np.ndarray):
-            # Convert the variable to a NumPy array
-            pred = np.array(pred)
-
-        print(f'[DEBUG] Prediction (type): {type(pred)}')
-        print(f'[DEBUG] Prediction (shape): {pred.shape}')
+        # print()
+        # print(f'[DEBUG] Img (dtype): {img.dtype}')
+        # print(f'[DEBUG] Img (values): {img}')
+        # print()
+        # print(f'[DEBUG] Mask (dtype): {mask.dtype}')
+        # print(f'[DEBUG] Mask (values): {mask}')
+        # print()
+        # print(f'[DEBUG] Prediction (dtype): {pred.dtype}')
+        # print(f'[DEBUG] Prediction (values): {pred}')
+        # print()
 
         # Rescale pixel values to [0, 1]
         img = (img - np.min(img)) / (np.max(img) - np.min(img))
         mask = (mask - np.min(mask)) / (np.max(mask) - np.min(mask))
         pred = (pred - np.min(pred)) / (np.max(pred) - np.min(pred))
+
+        # print()
+        # print(f'[DEBUG] Img rescale (dtype): {img.dtype}')
+        # print(f'[DEBUG] Img rescale (values): {img}')
+        # print()
+        # print(f'[DEBUG] Mask rescale (dtype): {mask.dtype}')
+        # print(f'[DEBUG] Mask rescale (values): {mask}')
+        # print()
+        # print(f'[DEBUG] Prediction rescale (dtype): {pred.dtype}')
+        # print(f'[DEBUG] Prediction rescale (values): {pred}')
+        # print()
 
         # Display original image
         ax[i][0].imshow(img)
@@ -227,7 +242,6 @@ def show_segmentation(samples, fig_name=None, debug=False):
         ax[i][2].imshow(pred)
         ax[i][2].axis('off')
         ax[i][2].set_title("Predicted Mask " + "mIoU =" + str(miou))
-                           # cmap='gray')
 
         print('[INFO] Displayed Semantic Segmentation Sample')
 

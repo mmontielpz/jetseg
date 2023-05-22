@@ -283,7 +283,7 @@ class SSegmDataset(Dataset):
         img, rgb_mask = transformer.apply_transform()
 
         # Convert rgb to mask
-        out_mask = rgb_to_mask(rgb_mask, self.id2code)
+        out_mask = rgb_to_mask(rgb_mask, self.code2id)
 
         # Convert masks to torch tensor
         rgb_mask = np.array(rgb_mask).transpose(2, 0, 1)

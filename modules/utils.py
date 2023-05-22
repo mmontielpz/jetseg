@@ -680,33 +680,40 @@ def batch_binary_mask(rgb, label_mask, num_classes):
 def rgb_to_mask(img, color_map):
     img = np.array(img, dtype=np.uint8)
     num_classes = len(color_map)
-    shape = img.shape[:2]+(num_classes,)
+    shape = img.shape[:2] + (num_classes,)
     out = np.zeros(shape, dtype=np.float64)
 
-    for i, cls in enumerate(color_map):
-        out[:, :, i] = np.all(np.array(img).reshape((-1, 3)) == color_map[i], axis=1).reshape(shape[:2])
+    color_keys = list(color_map.keys())
+    for i, color_key in enumerate(color_keys):
+        mask = np.isin(img, color_key).all(axis=-1)
+        out[:, :, i] = mask
 
     return out.transpose(2, 0, 1)
 
 
 def onehot_to_rgb(onehot, color_map):
-    print(f'[DEBUG] Original OnHot: {onehot.shape}')
-    print(f'[DEBUG] Color map: {color_map}')
+    # Non-batch processing
+    if len(onehot.shape) == 3:
+        onehot = onehot.unsqueeze(0)
 
-    single_layer = np.argmax(onehot, axis=1)
-    print(f'[DEBUG] Single Layer Output: {single_layer.shape}')
-    output = np.zeros(onehot.shape[-2:]+(3,))
-    output = output.transpose(2, 0, 1)
-    print(f'[DEBUG] Output: {output.shape}')
+    batch_size = onehot.shape[0]
+    output = np.zeros((batch_size, 3, onehot.shape[-2], onehot.shape[-1]), dtype=np.uint8)
 
-    for k in color_map.keys():
-        print(f'[DEBUG] Color Map: {k}')
-        output[single_layer == k] = color_map[k]
-        print(f'[DEBUG] Output of model: {output[single_layer == k]}')
-        sys.exit()
+    for i in range(batch_size):
+        single_layer = torch.argmax(onehot[i], dim=0)
+        single_layer = single_layer.detach().cpu().numpy()
 
-    return np.uint8(output)
+        for k in color_map.keys():
+            color = color_map[k]
+            output[i, 0][single_layer == k] = color[0]
+            output[i, 1][single_layer == k] = color[1]
+            output[i, 2][single_layer == k] = color[2]
 
+    # Non-batch processing
+    if len(onehot.shape) == 3:
+        output = output.squeeze(0)
+
+    return output
 
 
 def val_residual_op(in_ch, out_ch, res):

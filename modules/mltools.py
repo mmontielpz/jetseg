@@ -18,8 +18,7 @@ from modules.dataset import SSegmDataset
 from modules.loss import JetLoss
 from modules.metrics import compute_mIoU
 from modules.utils import (
-    get_path, color_map, batch_binary_mask, binary_mask,
-    get_results, onehot_to_rgb
+    get_path, batch_binary_mask, get_results, onehot_to_rgb, rgb_to_mask
 )
 
 assert pathmagic
@@ -129,6 +128,7 @@ def load_dataloaders(dataset, batch_size, num_workers=4):
 def one_epoch(params, mode):
 
     num_classes = params["num_classes"]
+    color_code = params["color_code"]
     stop = params["early_stop"]
     dataloader = params["dataloader"]
     model = params["model"]
@@ -182,16 +182,20 @@ def one_epoch(params, mode):
             # Getting batch loss
             batch_loss += loss.item() * x.size(0)
 
+            # Get semantic inference
+            pred_mask, miou = semantic_inference(logits, y, color_code)
+
+            # Accumulate mIoU
+            miou += miou
+
             # Convert predictions to class labels
-            pred = logits.argmax(dim=1).unsqueeze(1).expand(-1, logits.shape[1], -1, -1).reshape(logits.shape)
+            # pred = logits.argmax(dim=1).unsqueeze(1).expand(-1, logits.shape[1], -1, -1).reshape(logits.shape)
 
             # Get binary mask prediction of the model
-            pred_mask = batch_binary_mask(x.cpu().numpy(),
-                                          pred.cpu().numpy(),
-                                          num_classes).cuda()
+            # pred_mask = batch_binary_mask(x.cpu().numpy(), pred.cpu().numpy(), num_classes).cuda()
 
             # Compute IoU
-            miou += compute_mIoU(pred_mask, y, num_classes)
+            # miou += compute_mIoU(pred_mask, y, num_classes)
 
         # Getting lr epoch
         lr_epoch = optimizer.param_groups[0]["lr"]
@@ -245,16 +249,22 @@ def one_epoch(params, mode):
                 # Getting batch loss
                 batch_loss += loss.item() * x.size(0)
 
+                # Get semantic inference
+                pred_mask, miou = semantic_inference(logits, y, color_code)
+
+                # Accumulate mIoU
+                miou += miou
+
                 # Convert predictions to class labels
-                pred = logits.argmax(dim=1).unsqueeze(1).expand(-1, logits.shape[1], -1, -1).reshape(logits.shape)
+                # pred = logits.argmax(dim=1).unsqueeze(1).expand(-1, logits.shape[1], -1, -1).reshape(logits.shape)
 
-                # Get binary mask prediction of the model
-                pred_mask = batch_binary_mask(x.cpu().numpy(),
-                                              pred.cpu().numpy(),
-                                              num_classes).cuda()
+                # # Get binary mask prediction of the model
+                # pred_mask = batch_binary_mask(x.cpu().numpy(),
+                #                               pred.cpu().numpy(),
+                #                               num_classes).cuda()
 
-                # Compute IoU
-                miou += compute_mIoU(pred_mask, y, num_classes)
+                # # Compute IoU
+                # miou += compute_mIoU(pred_mask, y, num_classes)
 
         # Calculate epoch loss
         epoch_loss = batch_loss / len(dataloader.dataset)
@@ -391,16 +401,24 @@ def testing(params, val=False):
     return loss, miou
 
 
-def semantic_inference(logits, color_code):
-    print('[DEBUG] Semantic Inference (function)')
+def semantic_inference(logits, gt, color_code):
 
     # Applying one hot to rgb
-    model_output = onehot_to_rgb(logits.cpu(), color_code)
-    print(f'[DEBUG] Model Output (shape): {model_output.shape}')
-    print(f'[DEBUG] Model Output (values): {model_output}')
+    rgb_mask = onehot_to_rgb(logits.detach().cpu(), color_code["id2code"])
+    print(f'[DEBUG] RGB mask (shape): {rgb_mask.shape}')
+
+    # RGB to mask
+    pred_mask = rgb_to_mask(rgb_mask, color_code["code2id"])
+
+    # Gets prediction
+    print(f'[DEBUG] Pred (shape): {pred_mask.shape}')
+    print(f'[DEBUG] GT mask (shape): {gt.shape}')
     sys.exit()
 
+    # Compute mIoU
+    miou = compute_mIoU(pred_mask, gt.cpu())
 
+    return pred_mask, miou
 
 
 def evaluation(dataloader, model, color_code):
@@ -426,6 +444,7 @@ def evaluation(dataloader, model, color_code):
 
     # Inference loop
     semantic_results = []
+    miou = 0.0
 
     for batch_idx, data in enumerate(loop):
 
@@ -449,7 +468,7 @@ def evaluation(dataloader, model, color_code):
         logits = model(img)
 
         # Get semantic inference (mask and miou)
-        pred_mask, miou = semantic_inference(logits, color_code)
+        pred_mask, _ = semantic_inference(logits, color_code)
 
         # Get RGB mask model output
         # output = onehot_to_rgb(logits, color_code)
